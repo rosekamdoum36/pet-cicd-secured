@@ -219,5 +219,5 @@ jobs:
           JFROG_CLI_BUILD_NUMBER: ${{ github.run_number }}
         run: |
           jf rt build-collect-env
-           mvn -B clean deploy -DskipTests
+          jf mvn -B clean deploy -DskipTests
           jf rt build-publish
