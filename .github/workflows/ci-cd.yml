@@ -182,55 +182,29 @@ jobs:
     needs: [ sonarQube-scan, trivy-scan ]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up JDK ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
         with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: 'temurin'
-          cache: maven
+          name: app-jar
+          path: target
 
       - name: Authenticate to Vault and fetch JFrog credentials
         uses: hashicorp/vault-action@v3
         with:
           url: ${{ secrets.VAULT_ADDR }}
           method: approle
-          roleId: ${{ secrets.VAULT_ROLE_ID }}      # stored in GitHub Secrets
-          secretId: ${{ secrets.VAULT_SECRET_ID }}  # stored in GitHub Secrets
+          roleId: ${{ secrets.VAULT_ROLE_ID }}
+          secretId: ${{ secrets.VAULT_SECRET_ID }}
           secrets: |
             ${{ env.VAULT_JFROG_PATH }} username | JF_USER ;
             ${{ env.VAULT_JFROG_PATH }} password | JF_PASSWORD
 
-      # Step 2: use the creds the action just fetched
-      - uses: jfrog/setup-jfrog-cli@v4
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
         env:
           JF_URL: http://18.207.100.83:8082
           JF_USER: ${{ env.JF_USER }}
           JF_PASSWORD: ${{ env.JF_PASSWORD }}
-      # - name: Setup JFrog CLI
-      #   uses: jfrog/setup-jfrog-cli@v4
-      #   env:
-      #     JF_URL: ${{ env.JFROG_URL }}
-      #     JF_ACCESS_TOKEN: ${{ steps.vault.outputs.jfrog_token }}
 
-      - name: Verify JFrog connectivity
-        run: jf rt ping
-
-      # - name: Configure Maven repo for JFrog deploy
-      #   run: |
-      #     jf mvnc \
-      #       --repo-resolve-releases=${{ env.JFROG_REPO }} \
-      #       --repo-resolve-snapshots=${{ env.JFROG_REPO }} \
-      #       --repo-deploy-releases=${{ env.JFROG_REPO }} \
-      #       --repo-deploy-snapshots=${{ env.JFROG_REPO }}
-
-      # - name: Build and deploy with JFrog CLI (collects build-info)
-      #   env:
-      #     JFROG_CLI_BUILD_NAME: spring-petclinic
-      #     JFROG_CLI_BUILD_NUMBER: ${{ github.run_number }}
-      #   run: |
-      #     jf rt build-collect-env
-      #     jf mvn -B clean deploy -DskipTests
-      #     jf rt build-publish
+      - name: Upload JAR to Artifactory
+        run: jf rt upload "target/*.jar" ${{ env.JFROG_REPO }}/
