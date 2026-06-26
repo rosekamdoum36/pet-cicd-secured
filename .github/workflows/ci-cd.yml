@@ -180,35 +180,22 @@ jobs:
           cache: maven
 
       - name: Authenticate to Vault and fetch JFrog credentials
-        id: vault
-        run: |
-          VAULT_TOKEN=$(curl -s --request POST \
-            --data "{\"role_id\":\"${VAULT_ROLE_ID}\",\"secret_id\":\"${VAULT_SECRET_ID}\"}" \
-            "${VAULT_ADDR}/v1/auth/approle/login" | jq -r '.auth.client_token')
+        uses: hashicorp/vault-action@v3
+        with:
+          url: ${{ secrets.VAULT_ADDR }}
+          method: approle
+          roleId: ${{ secrets.VAULT_ROLE_ID }}      # stored in GitHub Secrets
+          secretId: ${{ secrets.VAULT_SECRET_ID }}  # stored in GitHub Secrets
+          secrets: |
+            secret/data/jfrog username | JF_USER ;
+            secret/data/jfrog password | JF_PASSWORD
 
-          if [ -z "${VAULT_TOKEN}" ] || [ "${VAULT_TOKEN}" = "null" ]; then
-            echo "ERROR: Failed to authenticate to Vault — check VAULT_ROLE_ID and VAULT_SECRET_ID secrets."
-            exit 1
-          fi
-
-          SECRET_JSON=$(curl -s --header "X-Vault-Token: ${VAULT_TOKEN}" \
-            "${VAULT_ADDR}/v1/${VAULT_JFROG_PATH}")
-
-          JFROG_TOKEN=$(echo "$SECRET_JSON" | jq -r '.data.data.access_token // .data.access_token')
-
-          if [ -z "${JFROG_TOKEN}" ] || [ "${JFROG_TOKEN}" = "null" ]; then
-            echo "ERROR: JFrog token is null — verify the Vault path '${VAULT_JFROG_PATH}' and key name."
-            exit 1
-          fi
-
-          echo "::add-mask::${JFROG_TOKEN}"
-          echo "jfrog_token=${JFROG_TOKEN}" >> "$GITHUB_OUTPUT"
+      # Step 2: use the creds the action just fetched
+      - uses: jfrog/setup-jfrog-cli@v4
         env:
-          VAULT_ADDR: ${{ env.VAULT_ADDR }}
-          VAULT_ROLE_ID: ${{ env.VAULT_ROLE_ID }}
-          VAULT_SECRET_ID: ${{ env.VAULT_SECRET_ID }}
-          VAULT_JFROG_PATH: ${{ env.VAULT_JFROG_PATH }}
-
+          JF_URL: https://mycompany.jfrog.io
+          JF_USER: ${{ env.JF_USER }}
+          JF_PASSWORD: ${{ env.JF_PASSWORD }}
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
         env:
@@ -232,5 +219,5 @@ jobs:
           JFROG_CLI_BUILD_NUMBER: ${{ github.run_number }}
         run: |
           jf rt build-collect-env
-          jf mvn clean deploy -DskipTests
+           mvn -B clean deploy -DskipTests
           jf rt build-publish
