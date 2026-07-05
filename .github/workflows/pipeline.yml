@@ -70,7 +70,7 @@ jobs:
           url: ${{ secrets.VAULT_ADDR }}
           token: ${{ secrets.VAULT_TOKEN }}
           secrets: |
-            secret/devsecops-pipeline/sonar SONAR_TOKEN | SONAR_TOKEN
+            secret/data/devsecops-pipeline/sonar SONAR_TOKEN | SONAR_TOKEN
 
       - name: Run SonarCloud analysis and Quality Gate
         run: |
