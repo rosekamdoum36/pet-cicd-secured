@@ -7,3 +7,19 @@ on:
     branches: [ main ]
 
 jobs:
+  build:
+    name: Checkout and Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Compile and package with Maven
+        run: mvn clean package -DskipTests
