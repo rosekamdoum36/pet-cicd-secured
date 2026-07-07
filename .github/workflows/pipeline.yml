@@ -94,42 +94,37 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
+ 
       - name: Set up JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
-          cache: maven
-
+          cache: maven 
       - name: Cache SonarCloud packages
         uses: actions/cache@v4
         with:
           path: ~/.sonar/cache
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
-
+ 
       - name: Compile project for analysis
         run: mvn -B compile -DskipTests
-
+ 
       - name: SonarQube code analysis
-        uses: SonarSource/sonarqube-scan-action@v6
+        uses: SonarSource/sonarqube-scan-action@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
         with:
           args: >
             -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
             -Dsonar.organization=${{ env.SONAR_ORGANIZATION }}
             -Dsonar.java.binaries=target/classes
-
-      - name: SonarCloud Quality Gate Check
-        id: quality-gate
-        uses: phwt/sonarqube-quality-gate-action@v1
-        with:
-          sonar-project-key: ${{ env.SONAR_PROJECT_KEY }}
-          sonar-host-url: https://sonarcloud.io
-          sonar-token: ${{ secrets.SONAR_TOKEN }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          branch: dev
-          fail-on-quality-gate-error: true
+ 
+      - name: SonarQube Quality Gate check
+        uses: SonarSource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5
+    env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: https://sonarcloud.io
