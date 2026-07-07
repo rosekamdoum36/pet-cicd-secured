@@ -86,65 +86,52 @@ jobs:
           path: target/surefire-reports/
           if-no-files-found: ignore
   sonarQube-scan:
-    name: SonarCloud Scan
+    name: SonarQube-Scan
     runs-on: ubuntu-latest
     needs: test
-
-    env:
-      JAVA_VERSION: 25
-      SONAR_HOST_URL: https://sonarcloud.io
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      SONAR_PROJECT_KEY: rosekamdoum36_pet-cicd-secured
-      SONAR_ORGANIZATION: rosekamdoum36
-
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Set up JDK
+ 
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
           cache: maven
-
+ 
       - name: Cache SonarCloud packages
         uses: actions/cache@v4
         with:
           path: ~/.sonar/cache
           key: ${{ runner.os }}-sonar
-          restore-keys: |
-            ${{ runner.os }}-sonar
-
-      - name: Compile project
-        run: mvn -B clean compile -DskipTests
-
-      - name: Run SonarCloud Scan
+          restore-keys: ${{ runner.os }}-sonar
+ 
+      - name: Compile project for analysis
+        run: mvn -B compile -DskipTests
+ 
+      - name: SonarQube code analysis
         uses: SonarSource/sonarqube-scan-action@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
         with:
           args: >
             -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
             -Dsonar.organization=${{ env.SONAR_ORGANIZATION }}
-            -Dsonar.host.url=${{ env.SONAR_HOST_URL }}
             -Dsonar.java.binaries=target/classes
+ 
+      - name: SonarCloud Quality Gate Check
+        id: quality-gate
+        uses: phwt/sonarqube-quality-gate-action@v1
+        with:
+          sonar-project-key: ${{ env.SONAR_PROJECT_KEY }}
+          sonar-host-url: https://sonarcloud.io
+          sonar-token: ${{ env.SONAR_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          branch: dev
+          fail-on-error: true
 
-      - name: Display report-task.txt
-        run: |
-          echo "===== report-task.txt ====="
-          cat .scannerwork/report-task.txt
-
-      - name: Validate Sonar token
-        run: |
-          curl --fail -u "${SONAR_TOKEN}:" \
-            https://sonarcloud.io/api/authentication/validate
-
-      - name: SonarCloud Quality Gate
-        uses: SonarSource/sonarqube-quality-gate-action@v1.2.0
-        timeout-minutes: 5
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  
