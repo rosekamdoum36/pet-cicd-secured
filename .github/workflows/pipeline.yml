@@ -123,6 +123,8 @@ jobs:
             -Dsonar.organization=${{ env.SONAR_ORGANIZATION }}
             -Dsonar.java.binaries=target/classes
             -Dsonar.sources=src/main/java,src/main/resources
+      - name: Debug report-task.txt          
+        run: cat .scannerwork/report-task.txt
       - name: SonarQube Quality Gate check
         uses: SonarSource/sonarqube-quality-gate-action@master
         timeout-minutes: 5
