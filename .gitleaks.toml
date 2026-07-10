@@ -1,0 +1,4 @@
+[allowlist]
+fingerprints = [
+  "f8bc0273f43f4802a250f6c275e2aafb331eb30b:.github/workflows/pipeline.yml:curl-auth-user:143"
+]
